@@ -6,26 +6,57 @@
 
 var app = require('../app');
 var debug = require('debug')('backend:server');
-var http = require('http');
-
+var https = require('https');
+const fs = require('fs')
 /**
  * Get port from environment and store in Express.
  */
 
 var port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
+app.set('hostname', process.env.HOSTNAME);
 
 /**
  * Create HTTP server.
  */
+var options = {
+  secureProtocol: 'TLSv1_2_server_method',
+  secureOptions: https.SSL_OP_NO_TLSv1 | https.SSL_OP_NO_SSLv3 | https.SSL_OP_NO_TLSv1_1,
+  cert: fs.readFileSync(process.env.CERT_PATH),
+  key: fs.readFileSync(process.env.KEY_PATH),
+  passphrase: process.env.KEY_PASSPHRASE,
+  ciphers: [
+      "ECDHE-RSA-AES256-SHA384",
+      "DHE-RSA-AES256-SHA384",
+      "ECDHE-RSA-AES256-SHA256",
+      "DHE-RSA-AES256-SHA256",
+      "ECDHE-RSA-AES128-SHA256",
+      "DHE-RSA-AES128-SHA256",
+      "HIGH",
+      "!aNULL",
+      "!eNULL",
+      "!EXPORT",
+      "!DES",
+      "!RC4",
+      "!MD5",
+      "!PSK",
+      "!SRP",
+      "!CAMELLIA"
+  ].join(':'),
+  honorCipherOrder: true
+};
 
-var server = http.createServer(app);
+const server = https.createServer(options, app)
 
 /**
  * Listen on provided port, on all network interfaces.
  */
 
-server.listen(port);
+server.listen(app.get('port'), 
+  () => {
+    console.log(`Express serving at https://${app.get('hostname')}:${app.get('port')}`)
+  }
+)
 server.on('error', onError);
 server.on('listening', onListening);
 
