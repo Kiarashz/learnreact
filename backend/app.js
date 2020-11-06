@@ -3,13 +3,34 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+const passport = require('passport')
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 
-var app = express();
-
 require('dotenv').config()
+var app = express();
+const config = require('./auth/config')['development']
+require('./auth/passport')(passport, config)
+
+
+app.get('/login',
+passport.authenticate(config.passport.strategy,
+  {
+    successRedirect: 'http://localhost:4000/',
+    failureRedirect: 'http://localhost:4000/error'
+  })
+);
+
+app.use((req, res, next) => {
+  if (req.isAuthenticated()) {
+    next()
+  }
+  else {
+    res.redirect('/login')
+  }
+})
+
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
