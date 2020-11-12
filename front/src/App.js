@@ -9,7 +9,7 @@ function App() {
 
   useEffect(
     () => {
-      fetch('/users')
+      fetch('/api/users')
       .then(res=> res.json())
       .then(setUsers)
     }, [fake]
