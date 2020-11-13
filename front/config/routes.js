@@ -16,6 +16,7 @@ module.exports = function (app, config, passport) {
       })
   );
 
+  // callback from ADFS
   app.post(config.passport.saml.path,
     passport.authenticate(config.passport.strategy,
       {

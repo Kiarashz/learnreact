@@ -9,7 +9,10 @@ function App() {
 
   useEffect(
     () => {
-      fetch('/api/users')
+      fetch('/api/users',
+      {
+        credentials: 'include'
+      })
       .then(res=> res.json())
       .then(setUsers)
     }, [fake]

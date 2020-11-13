@@ -1,3 +1,4 @@
+const proxy = require('http-proxy-middleware')
 const fs = require('fs')
 const express = require('express');
 const https = require('https');
@@ -7,14 +8,14 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const session = require('express-session');
-const errorhandler = require('errorhandler');
+
 require('dotenv').config()
 
-var env = process.env.NODE_ENV || 'development';
 const config = require('./config/config');
+const httpsKey = fs.readFileSync(process.env.HTTPS_KEY)
+const httpsCert = fs.readFileSync(process.env.HTTPS_CERT)
 
 console.log('Using configuration', config);
-
 require('./config/passport')(passport, config);
 
 var app = express();
@@ -37,22 +38,39 @@ app.use(passport.session());
 require('./config/routes')(app, config, passport);
 
 app.use(function(req, res, next) {
-  console.log(`${req.path}: matches ${req.path.match(/login|logout|sso.*/g)}`)
-  if (req.isAuthenticated() || req.path.match(/login|logout|sso.*/g)) {
-    console.log('matched!!!!!!!!!!!!!!!')
+  console.log(`Request from: ${req.headers['x-forwarded-for']} ${req.connection.remoteAddress} 
+    ${req.isAuthenticated() ? 'authenticated' : 'not authenticated'} 
+    req.path=${req.path} ${req.path.match(/.login|.logout|.sso.*|.manifest.json/g) ? 'matches' : 'does not match'} public endpoint (/login,/login/callback,logout)
+  `)
+  if (req.isAuthenticated() || req.path.match(/.login.*|.logout|.sso.*|.manifest.json/g)) {
+    console.log('calling next')
     next()
   }
   else {
+    console.log('redirecting to login')
     res.redirect('/login')
   }
 });
+
+app.use('/api', proxy.createProxyMiddleware(
+  {
+    target: process.env.API_URL,
+    changeOrigin: true,
+    secure: false,
+    ssl: {
+      key: httpsKey,
+      cert: httpsCert
+    }
+  }
+))
+
 app.use(express.static(path.join(__dirname, 'build')));
 
 var options = {
   secureProtocol: 'TLSv1_2_server_method',
   secureOptions: https.SSL_OP_NO_TLSv1 | https.SSL_OP_NO_SSLv3 | https.SSL_OP_NO_TLSv1_1,
-  cert: fs.readFileSync(process.env.HTTPS_CERT),
-  key: fs.readFileSync(process.env.HTTPS_KEY),
+  cert: httpsCert,
+  key: httpsKey,
   passphrase: process.env.PASSPHRASE,
   ciphers: [
       "ECDHE-RSA-AES256-SHA384",
